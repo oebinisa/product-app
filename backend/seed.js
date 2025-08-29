@@ -1,22 +1,40 @@
-// seed.js
+// backend/seed2.js
 const { faker } = require("@faker-js/faker");
 const Product = require("./models/productModel");
 const { sequelize } = require("./config/db");
 
 (async () => {
-  await sequelize.sync({ force: true }); // Reset DB
-  console.log("⏳ Seeding products...");
+  try {
+    console.log("⏳ Connecting to database...");
+    await sequelize.authenticate();
+    console.log("✅ Connection established.");
 
-  for (let i = 0; i < 10; i++) {
-    await Product.create({
-      name: faker.commerce.productName(),
-      price: faker.commerce.price(),
-      inStock: faker.datatype.boolean(),
-      // Reliable Picsum Photos - unique image per product
-      imageUrl: `https://picsum.photos/300/300?random=${i + 1}`,
-    });
+    // Reset DB
+    await sequelize.sync({ force: true });
+    console.log("🌱 Seeding products...");
+
+    const products = [];
+    for (let i = 0; i < 10; i++) {
+      products.push({
+        name: faker.commerce.productName(),
+        price: parseFloat(faker.commerce.price()), // Ensure numeric
+        inStock: faker.datatype.boolean(),
+        imageUrl: `https://picsum.photos/300/300?random=${i + 1}`,
+      });
+    }
+
+    await Product.bulkCreate(products);
+    console.log(`✅ Database seeded with ${products.length} fake products.`);
+    process.exit(0);
+  } catch (err) {
+    console.error("❌ Seeding failed:", err.message);
+    console.error(err.stack);
+    process.exit(1);
+  } finally {
+    await sequelize
+      .close()
+      .catch(() =>
+        console.warn("⚠️ Failed to close DB connection gracefully.")
+      );
   }
-
-  console.log("✅ Database seeded with fake products");
-  process.exit();
 })();
